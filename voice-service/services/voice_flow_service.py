@@ -9,7 +9,11 @@ from config import BASE_URL, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
 from services.speech_to_text_service import transcribe_audio
 from services.ai_service import get_ai_response, generate_summary
 from services.text_to_speech_service import synthesize_speech
-from services.call_storage_service import get_business_by_phone, insert_call, update_call
+from services.call_storage_service import (
+    get_business_context,
+    insert_call,
+    update_call,
+)
 
 # In-memory state per active call (keyed by Twilio CallSid)
 _active_calls: dict[str, dict] = {}
@@ -40,11 +44,14 @@ async def process_caller_speech(
     Full voice pipeline:
       1. Download caller recording from Twilio
       2. Whisper STT  -> transcript
-      3. GPT-4o-mini  -> AI reply text
+      3. GPT-4o-mini  -> AI reply text (with business context)
       4. ElevenLabs TTS -> MP3 audio
       5. Save transcript to Supabase
       6. Return TwiML that plays audio and records next turn
     """
+    # --- Resolve business context (cached per call) ---
+    business = await _get_or_load_business(call_sid, twilio_number)
+
     # --- 1. Download ---
     audio_data = await _download_recording(recording_url)
 
@@ -52,8 +59,8 @@ async def process_caller_speech(
     transcript = await transcribe_audio(audio_data)
     print(f"[STT] Caller: {transcript}")
 
-    # --- 3. LLM ---
-    ai_text = await get_ai_response(transcript)
+    # --- 3. LLM (with business context) ---
+    ai_text = await get_ai_response(transcript, business=business)
     print(f"[LLM] AI: {ai_text}")
 
     # --- 4. Text-to-Speech ---
@@ -87,6 +94,19 @@ async def process_caller_speech(
     return resp
 
 
+async def _get_or_load_business(call_sid: str, twilio_number: str) -> dict | None:
+    """Return cached business context for this call, or fetch it."""
+    if call_sid in _active_calls and "business" in _active_calls[call_sid]:
+        return _active_calls[call_sid]["business"]
+
+    business = await get_business_context(twilio_number)
+    if business:
+        biz_name = business.get("name", "?")
+        svc_count = len(business.get("services", []))
+        print(f"[CTX] Business loaded: {biz_name} ({svc_count} services)")
+    return business
+
+
 async def _save_turn(
     call_sid: str,
     caller_phone: str,
@@ -98,7 +118,9 @@ async def _save_turn(
     turn = f"Cliente: {caller_text}\nIA: {ai_text}"
 
     if call_sid not in _active_calls:
-        business_id = await get_business_by_phone(twilio_number)
+        business = await _get_or_load_business(call_sid, twilio_number)
+        business_id = business["id"] if business else None
+
         if not business_id:
             print(f"[DB] Skipping save — no business for {twilio_number}")
             return
@@ -107,6 +129,7 @@ async def _save_turn(
             "transcript": turn,
             "db_id": None,
             "business_id": business_id,
+            "business": business,
         }
 
         db_id = await insert_call(business_id, caller_phone, turn)

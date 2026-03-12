@@ -2,19 +2,31 @@ from fastapi import APIRouter, Request, Response
 from twilio.twiml.voice_response import VoiceResponse
 from config import BASE_URL
 from services.voice_flow_service import process_caller_speech, finalize_call
+from services.call_storage_service import get_business_context
 
 router = APIRouter()
+
+DEFAULT_GREETING = "Olá. Obrigado por ligar. Como posso ajudar?"
 
 
 @router.post("/voice")
 async def incoming_call(request: Request):
-    """Initial webhook: greet the caller and start recording their speech."""
+    """Initial webhook: greet the caller with business-specific greeting."""
+    form = await request.form()
+    twilio_number = str(form.get("To", ""))
+
+    greeting = DEFAULT_GREETING
+    if twilio_number:
+        business = await get_business_context(twilio_number)
+        if business and business.get("greeting_message"):
+            greeting = business["greeting_message"]
+
     status_url = f"{BASE_URL.rstrip('/')}/twilio/voice/status"
 
     resp = VoiceResponse()
 
     resp.say(
-        "Olá. Obrigado por ligar para a RecepCall. Como posso ajudar?",
+        greeting,
         language="pt-PT",
         voice="Polly.Ines",
         status_callback=status_url,

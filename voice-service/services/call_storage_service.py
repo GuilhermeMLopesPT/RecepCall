@@ -27,6 +27,37 @@ async def get_business_by_phone(twilio_number: str) -> str | None:
     return None
 
 
+async def get_business_context(twilio_number: str) -> dict | None:
+    """Fetch full business details + services for AI context."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{_REST_URL}/businesses",
+            headers=_HEADERS,
+            params={
+                "phone_number": f"eq.{twilio_number}",
+                "select": "id,name,phone_number,timezone,greeting_message,business_hours",
+            },
+        )
+        if resp.status_code != 200 or not resp.json():
+            print(f"[DB] No business found for number: {twilio_number}")
+            return None
+
+        business = resp.json()[0]
+
+        svc_resp = await client.get(
+            f"{_REST_URL}/services",
+            headers=_HEADERS,
+            params={
+                "business_id": f"eq.{business['id']}",
+                "select": "name,duration_minutes,price",
+            },
+        )
+        services = svc_resp.json() if svc_resp.status_code == 200 else []
+
+        business["services"] = services
+        return business
+
+
 async def insert_call(
     business_id: str, caller_phone: str, transcript: str
 ) -> str | None:
