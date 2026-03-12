@@ -2,9 +2,10 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react"
 import { motion, useInView, AnimatePresence } from "framer-motion"
-import { Play, Pause, Phone, ChevronDown } from "lucide-react"
+import { Play, Pause, Phone, ChevronDown, Calendar, Check } from "lucide-react"
 
 const BAR_COUNT = 48
+const AGENDA_MSG_INDEX = 4
 
 type Voice = {
   id: string
@@ -86,6 +87,157 @@ const VOICES: Voice[] = [
   },
 ]
 
+const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex"]
+const HOURS = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00"]
+
+type Slot = { day: number; hour: number; span: number; label: string }
+const BOOKED_SLOTS: Slot[] = [
+  { day: 0, hour: 0, span: 2, label: "Consulta" },
+  { day: 0, hour: 3, span: 1, label: "Check-up" },
+  { day: 1, hour: 1, span: 1, label: "Exame" },
+  { day: 1, hour: 3, span: 2, label: "Reunião" },
+  { day: 2, hour: 0, span: 1, label: "Limpeza" },
+  { day: 2, hour: 2, span: 2, label: "Consulta" },
+  { day: 3, hour: 2, span: 1, label: "Exame" },
+  { day: 3, hour: 4, span: 1, label: "Reunião" },
+  { day: 4, hour: 0, span: 2, label: "Consulta" },
+  { day: 4, hour: 3, span: 1, label: "Check-up" },
+]
+
+function MiniCalendar({ phase }: { phase: "scanning" | "found" | "confirmed" }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+      transition={{ duration: 0.35 }}
+      className="mx-auto my-3 w-full max-w-[95%]"
+    >
+      <div className="overflow-hidden rounded-xl border border-primary/20 bg-background/80 shadow-lg shadow-primary/5">
+        {/* Mini header */}
+        <div className="flex items-center gap-2 border-b border-border/40 bg-primary/5 px-3 py-2">
+          <Calendar className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[11px] font-semibold text-primary">Agenda — Semana Atual</span>
+          {phase === "scanning" && (
+            <motion.span
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+              className="ml-auto text-[10px] text-muted-foreground"
+            >
+              A procurar...
+            </motion.span>
+          )}
+          {phase === "found" && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="ml-auto text-[10px] font-medium text-emerald-500"
+            >
+              Vaga encontrada!
+            </motion.span>
+          )}
+          {phase === "confirmed" && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="ml-auto flex items-center gap-1 text-[10px] font-medium text-emerald-500"
+            >
+              <Check className="h-3 w-3" /> Agendado
+            </motion.span>
+          )}
+        </div>
+
+        {/* Grid */}
+        <div className="p-2">
+          <div
+            className="grid gap-px"
+            style={{ gridTemplateColumns: "40px repeat(5, 1fr)" }}
+          >
+            {/* Day headers */}
+            <div />
+            {DAYS.map((d, i) => (
+              <div
+                key={d}
+                className={`py-1 text-center text-[9px] font-semibold uppercase ${
+                  i === 3 && phase !== "scanning" ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {d}
+              </div>
+            ))}
+
+            {/* Time rows */}
+            {HOURS.map((hour, hIdx) => (
+              <div key={hour} className="contents">
+                <div className="flex items-center justify-end pr-1.5 text-[9px] text-muted-foreground">
+                  {hour}
+                </div>
+                {DAYS.map((_, dIdx) => {
+                  const slot = BOOKED_SLOTS.find(
+                    (s) => s.day === dIdx && hIdx >= s.hour && hIdx < s.hour + s.span,
+                  )
+                  const isTarget = dIdx === 3 && hIdx === 1
+                  const isSlotStart = slot && hIdx === slot.hour
+
+                  if (slot && !isSlotStart) return <div key={dIdx} />
+
+                  if (slot && isSlotStart) {
+                    return (
+                      <div
+                        key={dIdx}
+                        className="rounded bg-muted/60 px-1 py-0.5 text-[8px] text-muted-foreground"
+                        style={{ gridRow: `span ${slot.span}` }}
+                      >
+                        {slot.label}
+                      </div>
+                    )
+                  }
+
+                  if (isTarget) {
+                    return (
+                      <motion.div
+                        key={dIdx}
+                        animate={
+                          phase === "scanning"
+                            ? { backgroundColor: ["rgba(168,85,247,0)", "rgba(168,85,247,0.12)", "rgba(168,85,247,0)"] }
+                            : phase === "found"
+                              ? { backgroundColor: "rgba(168,85,247,0.2)", borderColor: "rgba(168,85,247,0.5)" }
+                              : { backgroundColor: "rgba(34,197,94,0.15)", borderColor: "rgba(34,197,94,0.5)" }
+                        }
+                        transition={
+                          phase === "scanning"
+                            ? { duration: 1.5, repeat: Infinity }
+                            : { duration: 0.4 }
+                        }
+                        className={`flex items-center justify-center rounded border text-[8px] font-semibold ${
+                          phase === "confirmed"
+                            ? "border-emerald-500/50 text-emerald-400"
+                            : phase === "found"
+                              ? "border-primary/50 text-primary"
+                              : "border-transparent text-primary/60"
+                        }`}
+                      >
+                        {phase !== "scanning" && "09-10h"}
+                      </motion.div>
+                    )
+                  }
+
+                  return (
+                    <div
+                      key={dIdx}
+                      className="rounded border border-transparent bg-muted/20"
+                    />
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 function generateBars(count: number) {
   const bars: number[] = []
   for (let i = 0; i < count; i++) {
@@ -101,12 +253,10 @@ function generateBars(count: number) {
 function ChatBubble({
   msg,
   voice,
-  index,
   charProgress,
 }: {
   msg: { speaker: "assistant" | "customer"; text: string }
   voice: Voice
-  index: number
   charProgress: number
 }) {
   const isAssistant = msg.speaker === "assistant"
@@ -134,7 +284,7 @@ function ChatBubble({
         </p>
         <span>{visibleText}</span>
         {isTyping && (
-          <span className="inline-block h-3.5 w-0.5 animate-pulse bg-primary align-middle ml-0.5" />
+          <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse bg-primary align-middle" />
         )}
       </div>
     </motion.div>
@@ -153,6 +303,7 @@ export function VoiceDemo() {
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
   const [showChat, setShowChat] = useState(false)
+  const [calendarPhase, setCalendarPhase] = useState<"hidden" | "scanning" | "found" | "confirmed">("hidden")
 
   const bars = useMemo(() => generateBars(BAR_COUNT), [])
 
@@ -174,11 +325,33 @@ export function VoiceDemo() {
     return result
   }, [selectedVoice, revealedChars])
 
+  const agendaMsgComplete =
+    messageCharProgress[AGENDA_MSG_INDEX] >= selectedVoice.conversation[AGENDA_MSG_INDEX].text.length
+  const nextMsgStarted = messageCharProgress[AGENDA_MSG_INDEX + 1] > 0
+  const confirmMsgProgress = messageCharProgress[AGENDA_MSG_INDEX + 3] ?? 0
+
+  useEffect(() => {
+    if (!showChat) {
+      setCalendarPhase("hidden")
+      return
+    }
+
+    if (confirmMsgProgress > 10) {
+      setCalendarPhase("confirmed")
+    } else if (nextMsgStarted) {
+      setCalendarPhase("found")
+    } else if (agendaMsgComplete) {
+      setCalendarPhase("scanning")
+    } else {
+      setCalendarPhase("hidden")
+    }
+  }, [showChat, agendaMsgComplete, nextMsgStarted, confirmMsgProgress])
+
   useEffect(() => {
     if (chatEndRef.current && showChat) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
     }
-  }, [revealedChars, showChat])
+  }, [revealedChars, showChat, calendarPhase])
 
   const cleanup = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -189,6 +362,7 @@ export function VoiceDemo() {
     setPlaying(false)
     setProgress(0)
     setShowChat(false)
+    setCalendarPhase("hidden")
   }, [])
 
   useEffect(() => {
@@ -220,6 +394,7 @@ export function VoiceDemo() {
             setPlaying(false)
             setProgress(0)
             setShowChat(false)
+            setCalendarPhase("hidden")
           }, 2000)
         }
       }
@@ -232,6 +407,7 @@ export function VoiceDemo() {
         setPlaying(false)
         setProgress(0)
         setShowChat(false)
+        setCalendarPhase("hidden")
       }, 2000)
     }
   }
@@ -272,7 +448,7 @@ export function VoiceDemo() {
           className="mx-auto mt-12 max-w-2xl"
         >
           <div className="relative rounded-2xl border border-border/40 bg-card/40 p-6 backdrop-blur-sm sm:p-8">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-transparent" />
 
             <div className="relative">
               {/* Header with voice selector */}
@@ -404,19 +580,25 @@ export function VoiceDemo() {
                     transition={{ duration: 0.4 }}
                     className="overflow-hidden"
                   >
-                    <div className="max-h-72 overflow-y-auto rounded-xl bg-muted/20 p-4 scrollbar-thin">
+                    <div className="max-h-80 overflow-y-auto rounded-xl bg-muted/20 p-4 scrollbar-thin">
                       <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Conversa em tempo real
                       </p>
                       <div className="space-y-3">
                         {selectedVoice.conversation.map((msg, i) => (
-                          <ChatBubble
-                            key={`${selectedVoice.id}-${i}`}
-                            msg={msg}
-                            voice={selectedVoice}
-                            index={i}
-                            charProgress={messageCharProgress[i]}
-                          />
+                          <div key={`${selectedVoice.id}-${i}`}>
+                            <ChatBubble
+                              msg={msg}
+                              voice={selectedVoice}
+                              charProgress={messageCharProgress[i]}
+                            />
+                            {/* Mini calendar after "confirmar agenda" message */}
+                            {i === AGENDA_MSG_INDEX && calendarPhase !== "hidden" && (
+                              <AnimatePresence>
+                                <MiniCalendar phase={calendarPhase} />
+                              </AnimatePresence>
+                            )}
+                          </div>
                         ))}
                         <div ref={chatEndRef} />
                       </div>
