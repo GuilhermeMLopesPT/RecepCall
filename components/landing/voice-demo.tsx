@@ -6,21 +6,84 @@ import { Play, Pause, Phone, ChevronDown } from "lucide-react"
 
 const BAR_COUNT = 48
 
-const DEMO_TEXT =
-  "Olá, bom dia! Está a ligar para a nossa empresa. Em que posso ajudar? Se pretender agendar uma consulta, posso verificar a disponibilidade agora mesmo."
-
 type Voice = {
   id: string
   name: string
   gender: "feminine" | "masculine"
   file: string
+  customer: string
+  conversation: { speaker: "assistant" | "customer"; text: string }[]
 }
 
 const VOICES: Voice[] = [
-  { id: "marta", name: "Marta", gender: "feminine", file: "/voices/marta.mp3" },
-  { id: "daniela", name: "Daniela", gender: "feminine", file: "/voices/daniela.mp3" },
-  { id: "joao", name: "João", gender: "masculine", file: "/voices/joao.mp3" },
-  { id: "paulo", name: "Paulo", gender: "masculine", file: "/voices/paulo.mp3" },
+  {
+    id: "daniela",
+    name: "Daniela",
+    gender: "feminine",
+    file: "/voices/daniela.mp3",
+    customer: "Duarte",
+    conversation: [
+      { speaker: "assistant", text: "Olá, bom dia! Está a ligar para a Clínica RecepCall, em que posso ajudar?" },
+      { speaker: "customer", text: "Olá, muito bom dia! O meu nome é Duarte e queria saber se era possível fazer uma marcação para uma consulta de rotina esta semana." },
+      { speaker: "assistant", text: "Claro que sim, Duarte! Em que dia lhe seria mais oportuno passar por cá?" },
+      { speaker: "customer", text: "Talvez na quinta-feira de manhã. Acha que é possível?" },
+      { speaker: "assistant", text: "Deixe-me só confirmar com a nossa agenda..." },
+      { speaker: "assistant", text: "Sim, temos vaga das 9 às 10. Pode ser?" },
+      { speaker: "customer", text: "Sim, está ótimo! Fica então agendado! Muito obrigado!" },
+      { speaker: "assistant", text: "Ora essa! Obrigada nós. Tenha uma ótima semana!" },
+    ],
+  },
+  {
+    id: "marta",
+    name: "Marta",
+    gender: "feminine",
+    file: "/voices/marta.mp3",
+    customer: "Duarte",
+    conversation: [
+      { speaker: "assistant", text: "Olá, bom dia! Está a ligar para a Clínica RecepCall, em que posso ajudar?" },
+      { speaker: "customer", text: "Olá, muito bom dia! O meu nome é Duarte e queria saber se era possível fazer uma marcação para uma consulta de rotina esta semana." },
+      { speaker: "assistant", text: "Claro que sim, Duarte! Em que dia lhe seria mais oportuno passar por cá?" },
+      { speaker: "customer", text: "Talvez na quinta-feira de manhã. Acha que é possível?" },
+      { speaker: "assistant", text: "Deixe-me só confirmar com a nossa agenda..." },
+      { speaker: "assistant", text: "Sim, temos vaga das 9 às 10. Pode ser?" },
+      { speaker: "customer", text: "Sim, está ótimo! Fica então agendado! Muito obrigado!" },
+      { speaker: "assistant", text: "Ora essa! Obrigada nós. Tenha uma ótima semana!" },
+    ],
+  },
+  {
+    id: "paulo",
+    name: "Paulo",
+    gender: "masculine",
+    file: "/voices/paulo.mp3",
+    customer: "Joana",
+    conversation: [
+      { speaker: "assistant", text: "Olá, bom dia! Está a ligar para a Clínica RecepCall, em que posso ajudar?" },
+      { speaker: "customer", text: "Olá, bom dia! O meu nome é Joana e queria saber se era possível fazer uma marcação para uma consulta de rotina esta semana." },
+      { speaker: "assistant", text: "Claro que sim, Joana! Em que dia lhe seria mais oportuno passar por cá?" },
+      { speaker: "customer", text: "Talvez na quinta-feira de manhã. Acha que é possível?" },
+      { speaker: "assistant", text: "Deixe-me só confirmar com a nossa agenda..." },
+      { speaker: "assistant", text: "Sim, temos vaga das 9 às 10. Pode ser?" },
+      { speaker: "customer", text: "Sim, está ótimo! Fica então agendado! Muito obrigada!" },
+      { speaker: "assistant", text: "Ora essa! Obrigado nós. Tenha uma ótima semana!" },
+    ],
+  },
+  {
+    id: "joana",
+    name: "Joana",
+    gender: "feminine",
+    file: "/voices/joana.mp3",
+    customer: "Duarte",
+    conversation: [
+      { speaker: "assistant", text: "Olá, bom dia! Está a ligar para a Clínica RecepCall, em que posso ajudar?" },
+      { speaker: "customer", text: "Olá, muito bom dia! O meu nome é Duarte e queria saber se era possível fazer uma marcação para uma consulta de rotina esta semana." },
+      { speaker: "assistant", text: "Claro que sim, Duarte! Em que dia lhe seria mais oportuno passar por cá?" },
+      { speaker: "customer", text: "Talvez na quinta-feira de manhã. Acha que é possível?" },
+      { speaker: "assistant", text: "Deixe-me só confirmar com a nossa agenda..." },
+      { speaker: "assistant", text: "Sim, temos vaga das 9 às 10. Pode ser?" },
+      { speaker: "customer", text: "Sim, está ótimo! Fica então agendado! Muito obrigado!" },
+      { speaker: "assistant", text: "Ora essa! Obrigada nós. Tenha uma ótima semana!" },
+    ],
+  },
 ]
 
 function generateBars(count: number) {
@@ -35,8 +98,52 @@ function generateBars(count: number) {
   return bars
 }
 
+function ChatBubble({
+  msg,
+  voice,
+  index,
+  charProgress,
+}: {
+  msg: { speaker: "assistant" | "customer"; text: string }
+  voice: Voice
+  index: number
+  charProgress: number
+}) {
+  const isAssistant = msg.speaker === "assistant"
+  const visibleText = msg.text.slice(0, charProgress)
+  const isTyping = charProgress > 0 && charProgress < msg.text.length
+
+  if (charProgress <= 0) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.25 }}
+      className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
+    >
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+          isAssistant
+            ? "rounded-tl-sm bg-primary/15 text-foreground"
+            : "rounded-tr-sm bg-muted/60 text-foreground"
+        }`}
+      >
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {isAssistant ? voice.name : voice.customer}
+        </p>
+        <span>{visibleText}</span>
+        {isTyping && (
+          <span className="inline-block h-3.5 w-0.5 animate-pulse bg-primary align-middle ml-0.5" />
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
 export function VoiceDemo() {
   const sectionRef = useRef<HTMLDivElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
   const inView = useInView(sectionRef, { once: true, margin: "-80px" })
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval>>(null)
@@ -45,10 +152,33 @@ export function VoiceDemo() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [visibleChars, setVisibleChars] = useState(0)
-  const [showTranscript, setShowTranscript] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   const bars = useMemo(() => generateBars(BAR_COUNT), [])
+
+  const totalChars = useMemo(
+    () => selectedVoice.conversation.reduce((sum, m) => sum + m.text.length, 0),
+    [selectedVoice],
+  )
+
+  const revealedChars = Math.floor(progress * totalChars)
+
+  const messageCharProgress = useMemo(() => {
+    const result: number[] = []
+    let consumed = 0
+    for (const msg of selectedVoice.conversation) {
+      const remaining = revealedChars - consumed
+      result.push(Math.max(0, Math.min(remaining, msg.text.length)))
+      consumed += msg.text.length
+    }
+    return result
+  }, [selectedVoice, revealedChars])
+
+  useEffect(() => {
+    if (chatEndRef.current && showChat) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [revealedChars, showChat])
 
   const cleanup = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -58,8 +188,7 @@ export function VoiceDemo() {
     }
     setPlaying(false)
     setProgress(0)
-    setVisibleChars(0)
-    setShowTranscript(false)
+    setShowChat(false)
   }, [])
 
   useEffect(() => {
@@ -74,43 +203,36 @@ export function VoiceDemo() {
 
     const audio = new Audio(selectedVoice.file)
     audioRef.current = audio
-
     audio.play()
     setPlaying(true)
-    setShowTranscript(true)
-    setVisibleChars(0)
+    setShowChat(true)
 
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       if (audio.duration && audio.duration > 0) {
         const p = audio.currentTime / audio.duration
-        setProgress(p)
-
-        const chars = Math.floor(p * DEMO_TEXT.length)
-        setVisibleChars(chars)
+        setProgress(Math.min(p, 1))
 
         if (p >= 1) {
           if (timerRef.current) clearInterval(timerRef.current)
-          setVisibleChars(DEMO_TEXT.length)
+          setProgress(1)
           setTimeout(() => {
             setPlaying(false)
             setProgress(0)
-            setShowTranscript(false)
-            setVisibleChars(0)
-          }, 1500)
+            setShowChat(false)
+          }, 2000)
         }
       }
     }, 50)
 
     audio.onended = () => {
       if (timerRef.current) clearInterval(timerRef.current)
-      setVisibleChars(DEMO_TEXT.length)
+      setProgress(1)
       setTimeout(() => {
         setPlaying(false)
         setProgress(0)
-        setShowTranscript(false)
-        setVisibleChars(0)
-      }, 1500)
+        setShowChat(false)
+      }, 2000)
     }
   }
 
@@ -139,7 +261,7 @@ export function VoiceDemo() {
             Ouça a nossa <span className="text-primary">IA em ação</span>
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-pretty text-lg text-muted-foreground">
-            Assim é que os seus clientes são recebidos quando ligam. Escolha uma voz e carregue em play.
+            Uma conversa real entre o nosso assistente e um cliente. Escolha uma voz e carregue em play.
           </p>
         </motion.div>
 
@@ -149,8 +271,8 @@ export function VoiceDemo() {
           transition={{ duration: 0.6, delay: 0.15 }}
           className="mx-auto mt-12 max-w-2xl"
         >
-          <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-card/40 p-6 backdrop-blur-sm sm:p-8">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+          <div className="relative rounded-2xl border border-border/40 bg-card/40 p-6 backdrop-blur-sm sm:p-8">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
 
             <div className="relative">
               {/* Header with voice selector */}
@@ -161,7 +283,9 @@ export function VoiceDemo() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold">Assistente RecepCall</p>
-                    <p className="text-xs text-muted-foreground">Demonstração de voz IA</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedVoice.name} conversa com {selectedVoice.customer}
+                    </p>
                   </div>
                 </div>
 
@@ -178,53 +302,56 @@ export function VoiceDemo() {
 
                   <AnimatePresence>
                     {dropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full z-20 mt-2 w-52 overflow-hidden rounded-xl border border-border/50 bg-card shadow-xl shadow-black/20"
-                      >
-                        <div className="p-1.5">
-                          <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Vozes Femininas
-                          </p>
-                          {feminineVoices.map((v) => (
-                            <button
-                              key={v.id}
-                              onClick={() => handleSelectVoice(v)}
-                              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                                selectedVoice.id === v.id
-                                  ? "bg-primary/10 text-primary"
-                                  : "text-foreground hover:bg-muted/50"
-                              }`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${selectedVoice.id === v.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                              {v.name}
-                            </button>
-                          ))}
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setDropdownOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 top-full z-40 mt-2 w-52 overflow-hidden rounded-xl border border-border/50 bg-card shadow-xl shadow-black/20"
+                        >
+                          <div className="p-1.5">
+                            <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Vozes Femininas
+                            </p>
+                            {feminineVoices.map((v) => (
+                              <button
+                                key={v.id}
+                                onClick={() => handleSelectVoice(v)}
+                                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+                                  selectedVoice.id === v.id
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-foreground hover:bg-muted/50"
+                                }`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${selectedVoice.id === v.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                                {v.name}
+                              </button>
+                            ))}
 
-                          <div className="my-1 h-px bg-border/50" />
+                            <div className="my-1 h-px bg-border/50" />
 
-                          <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Vozes Masculinas
-                          </p>
-                          {masculineVoices.map((v) => (
-                            <button
-                              key={v.id}
-                              onClick={() => handleSelectVoice(v)}
-                              className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                                selectedVoice.id === v.id
-                                  ? "bg-primary/10 text-primary"
-                                  : "text-foreground hover:bg-muted/50"
-                              }`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${selectedVoice.id === v.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                              {v.name}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
+                            <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Vozes Masculinas
+                            </p>
+                            {masculineVoices.map((v) => (
+                              <button
+                                key={v.id}
+                                onClick={() => handleSelectVoice(v)}
+                                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+                                  selectedVoice.id === v.id
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-foreground hover:bg-muted/50"
+                                }`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${selectedVoice.id === v.id ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                                {v.name}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      </>
                     )}
                   </AnimatePresence>
                 </div>
@@ -267,9 +394,9 @@ export function VoiceDemo() {
                 </div>
               </div>
 
-              {/* Live transcript */}
+              {/* Conversation chat */}
               <AnimatePresence>
-                {showTranscript && (
+                {showChat && (
                   <motion.div
                     initial={{ opacity: 0, height: 0, marginTop: 0 }}
                     animate={{ opacity: 1, height: "auto", marginTop: 20 }}
@@ -277,21 +404,22 @@ export function VoiceDemo() {
                     transition={{ duration: 0.4 }}
                     className="overflow-hidden"
                   >
-                    <div className="rounded-xl bg-muted/30 p-4">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Transcrição em tempo real
+                    <div className="max-h-72 overflow-y-auto rounded-xl bg-muted/20 p-4 scrollbar-thin">
+                      <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Conversa em tempo real
                       </p>
-                      <p className="mt-2 min-h-[3rem] text-sm leading-relaxed">
-                        <span className="text-foreground/90">
-                          {DEMO_TEXT.slice(0, visibleChars)}
-                        </span>
-                        {visibleChars > 0 && visibleChars < DEMO_TEXT.length && (
-                          <span className="inline-block h-4 w-0.5 animate-pulse bg-primary align-middle" />
-                        )}
-                        <span className="text-transparent">
-                          {DEMO_TEXT.slice(visibleChars)}
-                        </span>
-                      </p>
+                      <div className="space-y-3">
+                        {selectedVoice.conversation.map((msg, i) => (
+                          <ChatBubble
+                            key={`${selectedVoice.id}-${i}`}
+                            msg={msg}
+                            voice={selectedVoice}
+                            index={i}
+                            charProgress={messageCharProgress[i]}
+                          />
+                        ))}
+                        <div ref={chatEndRef} />
+                      </div>
                     </div>
                   </motion.div>
                 )}
