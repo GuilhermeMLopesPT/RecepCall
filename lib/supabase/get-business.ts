@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/ssr"
+import { SupabaseClient } from "@supabase/supabase-js"
 
 export type DayHours = {
   open: boolean
