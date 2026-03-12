@@ -38,7 +38,8 @@ const navItems = [
   { title: "Visão Geral", href: "/dashboard", icon: LayoutDashboard },
   { title: "Chamadas", href: "/dashboard/calls", icon: PhoneCall },
   { title: "Agenda", href: "/dashboard/calendar", icon: Calendar },
-  { title: "Definições", href: "/dashboard/settings", icon: Settings },
+  { title: "Configurações", href: "/dashboard/config", icon: Settings },
+  { title: "Perfil", href: "/dashboard/profile", icon: User2 },
 ]
 
 export function AppSidebar({ user }: { user: { email?: string; name?: string } }) {
@@ -123,9 +124,9 @@ export function AppSidebar({ user }: { user: { email?: string; name?: string } }
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
+                  <Link href="/dashboard/profile">
                     <User2 className="mr-2 h-4 w-4" />
-                    Definições
+                    Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

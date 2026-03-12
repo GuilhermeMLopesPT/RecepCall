@@ -1,11 +1,29 @@
 import { SupabaseClient } from "@supabase/ssr"
 
+export type DayHours = {
+  open: boolean
+  start: string
+  end: string
+}
+
+export type BusinessHours = {
+  monday: DayHours
+  tuesday: DayHours
+  wednesday: DayHours
+  thursday: DayHours
+  friday: DayHours
+  saturday: DayHours
+  sunday: DayHours
+}
+
 export type Business = {
   id: string
   name: string
   phone_number: string | null
+  email: string | null
   timezone: string
   greeting_message: string | null
+  business_hours: BusinessHours | null
   created_at: string
 }
 

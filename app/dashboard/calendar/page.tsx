@@ -1,94 +1,206 @@
-import { createClient } from "@/lib/supabase/server"
-import { getUserBusiness } from "@/lib/supabase/get-business"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "lucide-react"
+"use client"
 
-export default async function CalendarPage() {
-  const supabase = await createClient()
-  const ub = await getUserBusiness(supabase)
-  const businessId = ub?.business_id
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { getUserBusiness, type BusinessHours } from "@/lib/supabase/get-business"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ExternalLink, Loader2 } from "lucide-react"
+import { CalendarToolbar } from "@/components/dashboard/calendar/calendar-toolbar"
+import { CalendarListView } from "@/components/dashboard/calendar/calendar-list-view"
+import { CalendarWeekView } from "@/components/dashboard/calendar/calendar-week-view"
+import { CalendarDayView } from "@/components/dashboard/calendar/calendar-day-view"
+import type { CalendarEvent, ViewMode } from "@/components/dashboard/calendar/types"
 
-  const { data: appointments } = businessId
-    ? await supabase
-        .from("appointments")
-        .select("id, customer_name, customer_phone, start_time, end_time, status, services(name)")
-        .eq("business_id", businessId)
-        .gte("start_time", new Date().toISOString())
-        .order("start_time", { ascending: true })
-        .limit(50)
-    : { data: null }
+const DEFAULT_HOURS: BusinessHours = {
+  monday: { open: true, start: "09:00", end: "18:00" },
+  tuesday: { open: true, start: "09:00", end: "18:00" },
+  wednesday: { open: true, start: "09:00", end: "18:00" },
+  thursday: { open: true, start: "09:00", end: "18:00" },
+  friday: { open: true, start: "09:00", end: "18:00" },
+  saturday: { open: false, start: "09:00", end: "13:00" },
+  sunday: { open: false, start: "09:00", end: "13:00" },
+}
+
+function computeGridRange(bh: BusinessHours): {
+  startHour: number
+  endHour: number
+} {
+  let earliest = 24
+  let latest = 0
+
+  for (const key of Object.keys(bh) as (keyof BusinessHours)[]) {
+    const day = bh[key]
+    if (!day.open) continue
+    const [sh, sm] = day.start.split(":").map(Number)
+    const [eh, em] = day.end.split(":").map(Number)
+    const startDecimal = sh + sm / 60
+    const endDecimal = eh + em / 60
+    if (startDecimal < earliest) earliest = startDecimal
+    if (endDecimal > latest) latest = endDecimal
+  }
+
+  if (earliest >= latest) {
+    return { startHour: 9, endHour: 18 }
+  }
+
+  return {
+    startHour: Math.floor(earliest),
+    endHour: Math.ceil(latest),
+  }
+}
+
+export default function CalendarPage() {
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [gcalConnected, setGcalConnected] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<ViewMode>("list")
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null)
+
+  useEffect(() => {
+    async function loadData() {
+      const [appointments, google] = await Promise.all([
+        loadAppointments(),
+        loadGoogleEvents(),
+      ])
+
+      const merged = [...appointments, ...google].sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
+      )
+      setEvents(merged)
+      setLoading(false)
+    }
+    loadData()
+  }, [])
+
+  async function loadAppointments(): Promise<CalendarEvent[]> {
+    const supabase = createClient()
+    const ub = await getUserBusiness(supabase)
+    if (!ub) return []
+
+    const b = ub.businesses
+    if (b.business_hours) setBusinessHours(b.business_hours)
+
+    const { data } = await supabase
+      .from("appointments")
+      .select(
+        "id, customer_name, customer_phone, start_time, end_time, status, services(name)",
+      )
+      .eq("business_id", ub.business_id)
+      .gte("start_time", new Date().toISOString())
+      .order("start_time", { ascending: true })
+      .limit(50)
+
+    if (!data) return []
+
+    return data.map((d) => {
+      const svc = d.services as unknown as { name: string } | null
+      return {
+        id: d.id,
+        title: d.customer_name,
+        start: d.start_time,
+        end: d.end_time,
+        allDay: false,
+        source: "recepcall" as const,
+        customerPhone: d.customer_phone,
+        serviceName: svc?.name,
+      }
+    })
+  }
+
+  async function loadGoogleEvents(): Promise<CalendarEvent[]> {
+    try {
+      const res = await fetch("/api/google/events")
+      const json = await res.json()
+      setGcalConnected(json.connected ?? false)
+      return (json.events ?? []).map(
+        (e: {
+          id: string
+          title: string
+          start: string
+          end: string
+          allDay: boolean
+          location?: string
+        }) => ({
+          id: e.id,
+          title: e.title,
+          start: e.start,
+          end: e.end,
+          allDay: e.allDay,
+          source: "google" as const,
+          location: e.location,
+        }),
+      )
+    } catch {
+      return []
+    }
+  }
+
+  const resolvedHours = useMemo(
+    () => businessHours ?? DEFAULT_HOURS,
+    [businessHours],
+  )
+
+  const { startHour, endHour } = useMemo(
+    () => computeGridRange(resolvedHours),
+    [resolvedHours],
+  )
+
+  const filteredEvents = useMemo(() => events, [events])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
-        <p className="text-muted-foreground">
-          Agendamentos marcados automaticamente pelo RecepCall.
-        </p>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
+          <p className="text-sm text-muted-foreground">
+            Agendamentos do RecepCall e eventos do Google Calendar.
+          </p>
+        </div>
+        {!loading && !gcalConnected && (
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/api/google/auth">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Conectar Google Calendar
+            </Link>
+          </Button>
+        )}
       </div>
 
+      <CalendarToolbar
+        view={view}
+        onViewChange={setView}
+        currentDate={currentDate}
+        onDateChange={setCurrentDate}
+      />
+
       <Card>
-        <CardHeader>
-          <CardTitle>Agendamentos</CardTitle>
-          <CardDescription>
-            {appointments && appointments.length > 0
-              ? `${appointments.length} agendamento${appointments.length > 1 ? "s" : ""} próximo${appointments.length > 1 ? "s" : ""}`
-              : "Os compromissos marcados pela IA vão aparecer aqui."
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {appointments && appointments.length > 0 ? (
-            <div className="space-y-3">
-              {appointments.map((appt) => {
-                const service = appt.services as unknown as { name: string } | null
-                return (
-                  <div key={appt.id} className="rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{appt.customer_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {service?.name ?? "Serviço"} &middot; {appt.customer_phone}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {new Date(appt.start_time).toLocaleDateString("pt-PT", {
-                            day: "2-digit", month: "short",
-                          })}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(appt.start_time).toLocaleTimeString("pt-PT", {
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                          {" — "}
-                          {new Date(appt.end_time).toLocaleTimeString("pt-PT", {
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+        <CardContent className="p-4">
+          {loading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : view === "list" ? (
+            <CalendarListView events={filteredEvents} />
+          ) : view === "week" ? (
+            <CalendarWeekView
+              events={filteredEvents}
+              currentDate={currentDate}
+              startHour={startHour}
+              endHour={endHour}
+              businessHours={resolvedHours}
+            />
           ) : (
-            <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-lg border border-dashed">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                <Calendar className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="text-center">
-                <p className="font-medium">Sem agendamentos</p>
-                <p className="text-sm text-muted-foreground">
-                  Quando a IA marcar compromissos, eles aparecerão aqui.
-                </p>
-              </div>
-            </div>
+            <CalendarDayView
+              events={filteredEvents}
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              startHour={startHour}
+              endHour={endHour}
+              businessHours={resolvedHours}
+            />
           )}
         </CardContent>
       </Card>
