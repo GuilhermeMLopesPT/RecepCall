@@ -100,26 +100,27 @@ export function CalendarWeekView({
 
   return (
     <div className="overflow-x-auto rounded-lg border">
+      <div style={{ minWidth: 680 }}>
       {/* Header row with day names */}
       <div
         className="grid border-b bg-muted/30"
-        style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
+        style={{ gridTemplateColumns: "50px repeat(7, 1fr)" }}
       >
-        <div className="border-r p-2" />
+        <div className="border-r p-1 sm:p-2" />
         {days.map((day) => {
           const dh = businessHours[ISO_DAY_KEY[getISODay(day)]]
           return (
             <div
               key={day.toISOString()}
-              className={`border-r p-2 text-center last:border-r-0 ${
+              className={`border-r p-1 text-center last:border-r-0 sm:p-2 ${
                 isToday(day) ? "bg-primary/5" : ""
               } ${!dh.open ? "opacity-50" : ""}`}
             >
-              <p className="text-[11px] font-medium uppercase text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase text-muted-foreground sm:text-[11px]">
                 {format(day, "EEE", { locale: pt })}
               </p>
               <p
-                className={`text-lg font-semibold ${
+                className={`text-base font-semibold sm:text-lg ${
                   isToday(day) ? "text-primary" : ""
                 }`}
               >
@@ -133,14 +134,14 @@ export function CalendarWeekView({
       {/* Time grid */}
       <div
         className="grid"
-        style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}
+        style={{ gridTemplateColumns: "50px repeat(7, 1fr)" }}
       >
         {/* Time labels column */}
         <div className="border-r" style={{ height: totalHeight }}>
           {hours.map((hour) => (
             <div
               key={hour}
-              className="flex items-start justify-end border-b pr-2 pt-0.5 text-[11px] text-muted-foreground"
+              className="flex items-start justify-end border-b pr-1 pt-0.5 text-[10px] text-muted-foreground sm:pr-2 sm:text-[11px]"
               style={{ height: HOUR_HEIGHT }}
             >
               {String(hour).padStart(2, "0")}:00
@@ -201,6 +202,7 @@ export function CalendarWeekView({
             </div>
           )
         })}
+      </div>
       </div>
     </div>
   )

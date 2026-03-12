@@ -224,15 +224,17 @@ export default function ConfigPage() {
                 return (
                   <div
                     key={key}
-                    className={`flex items-center gap-4 rounded-lg border p-3 transition-colors ${
+                    className={`flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors sm:gap-4 ${
                       day.open ? "bg-background" : "bg-muted/50"
                     }`}
                   >
-                    <Switch
-                      checked={day.open}
-                      onCheckedChange={(checked) => updateDay(key, { open: checked })}
-                    />
-                    <span className="w-36 text-sm font-medium">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={day.open}
+                        onCheckedChange={(checked) => updateDay(key, { open: checked })}
+                      />
+                      <span className="min-w-[5rem] text-sm font-medium sm:w-36">{label}</span>
+                    </div>
 
                     {day.open ? (
                       <div className="flex items-center gap-2">
@@ -240,14 +242,14 @@ export default function ConfigPage() {
                           type="time"
                           value={day.start}
                           onChange={(e) => updateDay(key, { start: e.target.value })}
-                          className="w-28"
+                          className="w-24 sm:w-28"
                         />
                         <span className="text-sm text-muted-foreground">até</span>
                         <Input
                           type="time"
                           value={day.end}
                           onChange={(e) => updateDay(key, { end: e.target.value })}
-                          className="w-28"
+                          className="w-24 sm:w-28"
                         />
                       </div>
                     ) : (

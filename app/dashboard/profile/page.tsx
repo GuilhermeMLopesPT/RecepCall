@@ -139,17 +139,17 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium">Google Calendar</p>
                 {gcalLoading ? (
                   <p className="text-sm text-muted-foreground">A verificar...</p>
                 ) : gcalConnected ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="truncate text-sm text-muted-foreground">
                     Conectado — {gcalEmail}
                   </p>
                 ) : (
@@ -159,22 +159,24 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-            {gcalLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : gcalConnected ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnectGoogle}
-                disabled={disconnecting}
-              >
-                {disconnecting ? "A desconectar..." : "Desconectar"}
-              </Button>
-            ) : (
-              <Button size="sm" asChild>
-                <a href="/api/google/auth">Conectar</a>
-              </Button>
-            )}
+            <div className="shrink-0">
+              {gcalLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : gcalConnected ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectGoogle}
+                  disabled={disconnecting}
+                >
+                  {disconnecting ? "A desconectar..." : "Desconectar"}
+                </Button>
+              ) : (
+                <Button size="sm" asChild>
+                  <a href="/api/google/auth">Conectar</a>
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -188,12 +190,12 @@ export default function ProfilePage() {
           <CardDescription>O seu plano atual e utilização.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-medium">Plano Gratuito</p>
               <p className="text-sm text-muted-foreground">Período de teste — 14 dias grátis</p>
             </div>
-            <Button variant="outline">Atualizar Plano</Button>
+            <Button variant="outline" className="w-full sm:w-auto">Atualizar Plano</Button>
           </div>
         </CardContent>
       </Card>

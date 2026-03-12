@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { getUserBusiness, type BusinessHours } from "@/lib/supabase/get-business"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ExternalLink, Loader2 } from "lucide-react"
@@ -52,12 +53,19 @@ function computeGridRange(bh: BusinessHours): {
 }
 
 export default function CalendarPage() {
+  const isMobile = useIsMobile()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [gcalConnected, setGcalConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<ViewMode>("list")
   const [currentDate, setCurrentDate] = useState(new Date())
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null)
+
+  useEffect(() => {
+    if (isMobile && view === "week") {
+      setView("day")
+    }
+  }, [isMobile, view])
 
   useEffect(() => {
     async function loadData() {
