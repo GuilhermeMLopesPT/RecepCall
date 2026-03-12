@@ -21,16 +21,12 @@ async def incoming_call(request: Request):
         if business and business.get("greeting_message"):
             greeting = business["greeting_message"]
 
-    status_url = f"{BASE_URL.rstrip('/')}/twilio/voice/status"
-
     resp = VoiceResponse()
 
     resp.say(
         greeting,
         language="pt-PT",
         voice="Polly.Ines",
-        status_callback=status_url,
-        status_callback_event="completed",
     )
 
     resp.record(
@@ -47,6 +43,7 @@ async def incoming_call(request: Request):
         voice="Polly.Ines",
     )
 
+    print(f"[WEBHOOK] TwiML ready for {twilio_number}")
     return Response(content=str(resp), media_type="application/xml")
 
 
