@@ -3,6 +3,7 @@
 import { Header } from "@/components/landing/header"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
+import { VoiceDemo } from "@/components/landing/voice-demo"
 import { HowItWorks } from "@/components/landing/how-it-works"
 import { Pricing } from "@/components/landing/pricing"
 import { CTA } from "@/components/landing/cta"
@@ -15,6 +16,7 @@ export default function HomePage() {
       <main>
         <Hero />
         <Features />
+        <VoiceDemo />
         <HowItWorks />
         <Pricing />
         <CTA />
