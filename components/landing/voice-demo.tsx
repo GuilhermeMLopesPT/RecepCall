@@ -79,10 +79,9 @@ const VOICES: Voice[] = [
 ]
 
 function wordCount(text: string) { return text.split(/\s+/).length }
-function wordsSlice(text: string, count: number) {
-  if (count <= 0) return ""
-  return text.split(/\s+/).slice(0, count).join(" ")
-}
+
+/** Duration (ms) to pause audio while mini dashboard runs after "confirmar agenda" */
+const AGENDA_PAUSE_MS = 3800
 
 /* ─── Mini Dashboard ─────────────────────────────────────────── */
 
@@ -308,11 +307,10 @@ function ChatBubble({
 }) {
   const isAssistant = msg.speaker === "assistant"
   const words = msg.text.split(/\s+/)
-  const visibleWords = Math.min(wordProgress, words.length)
-  const visibleText = words.slice(0, visibleWords).join(" ")
-  const isTyping = visibleWords > 0 && visibleWords < words.length
+  const visibleCount = Math.min(wordProgress, words.length)
+  const isTyping = visibleCount > 0 && visibleCount < words.length
 
-  if (visibleWords <= 0) return null
+  if (visibleCount <= 0) return null
 
   return (
     <motion.div
@@ -328,7 +326,19 @@ function ChatBubble({
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {isAssistant ? voice.name : voice.customer}
         </p>
-        <span>{visibleText}</span>
+        <span className="inline">
+          {words.slice(0, visibleCount).map((word, i) => (
+            <motion.span
+              key={i}
+              initial={{ clipPath: "inset(0 100% 0 0)" }}
+              animate={{ clipPath: "inset(0 0 0 0)" }}
+              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              className="inline-block"
+            >
+              {word}{" "}
+            </motion.span>
+          ))}
+        </span>
         {isTyping && (
           <span className="ml-1 inline-block h-3.5 w-0.5 animate-pulse bg-primary align-middle" />
         )}
@@ -345,6 +355,8 @@ export function VoiceDemo() {
   const inView = useInView(sectionRef, { once: true, margin: "-80px" })
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval>>(null)
+  const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const hasPausedForAgendaRef = useRef(false)
 
   const [selectedVoice, setSelectedVoice] = useState<Voice>(VOICES[0])
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -378,6 +390,8 @@ export function VoiceDemo() {
   const nextMsgStarted = msgWordProgress[AGENDA_MSG_INDEX + 1] > 0
   const confirmWords = msgWordProgress[AGENDA_MSG_INDEX + 3] ?? 0
 
+  const [isPausedForAgenda, setIsPausedForAgenda] = useState(false)
+
   useEffect(() => {
     if (!showChat) return
 
@@ -393,6 +407,27 @@ export function VoiceDemo() {
       })
     }
   }, [showChat, agendaMsgDone, nextMsgStarted, confirmWords])
+
+  useEffect(() => {
+    if (!agendaMsgDone || !playing || hasPausedForAgendaRef.current || !audioRef.current) return
+    hasPausedForAgendaRef.current = true
+    setIsPausedForAgenda(true)
+    audioRef.current.pause()
+
+    pauseTimeoutRef.current = setTimeout(() => {
+      pauseTimeoutRef.current = null
+      setIsPausedForAgenda(false)
+      setDashPhase("found")
+      audioRef.current?.play()
+    }, AGENDA_PAUSE_MS)
+
+    return () => {
+      if (pauseTimeoutRef.current) {
+        clearTimeout(pauseTimeoutRef.current)
+        pauseTimeoutRef.current = null
+      }
+    }
+  }, [agendaMsgDone, playing])
 
   useEffect(() => {
     if (dashPhase === "overview") {
@@ -412,6 +447,12 @@ export function VoiceDemo() {
   }, [revealedWords, showChat, dashPhase])
 
   const stopAudio = useCallback(() => {
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current)
+      pauseTimeoutRef.current = null
+    }
+    hasPausedForAgendaRef.current = false
+    setIsPausedForAgenda(false)
     if (timerRef.current) clearInterval(timerRef.current)
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0 }
     setPlaying(false)
@@ -433,6 +474,7 @@ export function VoiceDemo() {
       fullReset()
     }
 
+    hasPausedForAgendaRef.current = false
     const audio = new Audio(selectedVoice.file)
     audioRef.current = audio
     audio.play()
@@ -443,6 +485,7 @@ export function VoiceDemo() {
 
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
+      if (hasPausedForAgendaRef.current) return
       if (audio.duration && audio.duration > 0) {
         const p = audio.currentTime / audio.duration
         setProgress(Math.min(p, 1))
