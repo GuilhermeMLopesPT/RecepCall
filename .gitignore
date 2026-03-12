@@ -7,4 +7,12 @@ __v0_jsx-dev-runtime.ts
 node_modules/
 .next/
 .env*.local
+.env
 .DS_Store
+
+# Voice service temp audio
+voice-service/audio/*.mp3
+voice-service/audio/*.wav
+__pycache__/
+*.pyc
+venv/
