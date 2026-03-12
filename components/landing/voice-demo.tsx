@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect, useCallback, useMemo } from "react"
+import { useRef, useState, useEffect, useCallback, useMemo, Fragment } from "react"
 import { motion, useInView, AnimatePresence } from "framer-motion"
 import {
   Play, Pause, Phone, ChevronDown, Calendar, Check,
@@ -326,17 +326,19 @@ function ChatBubble({
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {isAssistant ? voice.name : voice.customer}
         </p>
-        <span className="inline">
+        <span className="inline whitespace-pre-wrap">
           {words.slice(0, visibleCount).map((word, i) => (
-            <motion.span
-              key={i}
-              initial={{ clipPath: "inset(0 100% 0 0)" }}
-              animate={{ clipPath: "inset(0 0 0 0)" }}
-              transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
-              className="inline-block"
-            >
-              {word}{" "}
-            </motion.span>
+            <Fragment key={i}>
+              <motion.span
+                initial={{ clipPath: "inset(0 100% 0 0)" }}
+                animate={{ clipPath: "inset(0 0 0 0)" }}
+                transition={{ duration: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+                className="inline-block"
+              >
+                {word}
+              </motion.span>
+              {i < visibleCount - 1 ? " " : ""}
+            </Fragment>
           ))}
         </span>
         {isTyping && (
@@ -372,7 +374,7 @@ export function VoiceDemo() {
     [selectedVoice],
   )
 
-  const revealedWords = Math.floor(progress * totalWords)
+  const revealedWords = Math.min(totalWords, Math.floor(progress * totalWords * 1.15))
 
   const msgWordProgress = useMemo(() => {
     const result: number[] = []
@@ -392,6 +394,15 @@ export function VoiceDemo() {
 
   const [isPausedForAgenda, setIsPausedForAgenda] = useState(false)
 
+  const wordsBeforeAgendaMsg = useMemo(() => {
+    let n = 0
+    for (let i = 0; i < AGENDA_MSG_INDEX; i++) {
+      n += wordCount(selectedVoice.conversation[i].text)
+    }
+    return n
+  }, [selectedVoice])
+  const agendaMsgWordCount = wordCount(selectedVoice.conversation[AGENDA_MSG_INDEX].text)
+
   useEffect(() => {
     if (!showChat) return
 
@@ -407,27 +418,6 @@ export function VoiceDemo() {
       })
     }
   }, [showChat, agendaMsgDone, nextMsgStarted, confirmWords])
-
-  useEffect(() => {
-    if (!agendaMsgDone || !playing || hasPausedForAgendaRef.current || !audioRef.current) return
-    hasPausedForAgendaRef.current = true
-    setIsPausedForAgenda(true)
-    audioRef.current.pause()
-
-    pauseTimeoutRef.current = setTimeout(() => {
-      pauseTimeoutRef.current = null
-      setIsPausedForAgenda(false)
-      setDashPhase("found")
-      audioRef.current?.play()
-    }, AGENDA_PAUSE_MS)
-
-    return () => {
-      if (pauseTimeoutRef.current) {
-        clearTimeout(pauseTimeoutRef.current)
-        pauseTimeoutRef.current = null
-      }
-    }
-  }, [agendaMsgDone, playing])
 
   useEffect(() => {
     if (dashPhase === "overview") {
@@ -484,18 +474,34 @@ export function VoiceDemo() {
     setDashPhase("hidden")
 
     if (timerRef.current) clearInterval(timerRef.current)
+    const threshold = (wordsBeforeAgendaMsg + agendaMsgWordCount) / totalWords
     timerRef.current = setInterval(() => {
       if (hasPausedForAgendaRef.current) return
       if (audio.duration && audio.duration > 0) {
         const p = audio.currentTime / audio.duration
         setProgress(Math.min(p, 1))
+
+        if (!hasPausedForAgendaRef.current && p >= threshold) {
+          hasPausedForAgendaRef.current = true
+          setIsPausedForAgenda(true)
+          audio.pause()
+          setDashPhase("overview")
+          pauseTimeoutRef.current = setTimeout(() => {
+            pauseTimeoutRef.current = null
+            setIsPausedForAgenda(false)
+            setDashPhase("found")
+            hasPausedForAgendaRef.current = false
+            audio.play()
+          }, AGENDA_PAUSE_MS)
+        }
+
         if (p >= 1) {
           if (timerRef.current) clearInterval(timerRef.current)
           setProgress(1)
           setPlaying(false)
         }
       }
-    }, 60)
+    }, 50)
 
     audio.onended = () => {
       if (timerRef.current) clearInterval(timerRef.current)
