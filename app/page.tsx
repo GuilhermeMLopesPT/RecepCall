@@ -1,3 +1,5 @@
+"use client"
+
 import { Header } from "@/components/landing/header"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
@@ -8,7 +10,7 @@ import { Footer } from "@/components/landing/footer"
 
 export default function HomePage() {
   return (
-    <>
+    <div className="dark bg-background text-foreground">
       <Header />
       <main>
         <Hero />
@@ -18,6 +20,6 @@ export default function HomePage() {
         <CTA />
       </main>
       <Footer />
-    </>
+    </div>
   )
 }

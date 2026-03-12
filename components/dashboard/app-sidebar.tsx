@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useTheme } from "next-themes"
 import { createClient } from "@/lib/supabase/client"
 import {
   Phone,
@@ -12,6 +13,8 @@ import {
   LogOut,
   ChevronUp,
   User2,
+  Sun,
+  Moon,
 } from "lucide-react"
 import {
   Sidebar,
@@ -45,6 +48,7 @@ const navItems = [
 export function AppSidebar({ user }: { user: { email?: string; name?: string } }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -106,6 +110,15 @@ export function AppSidebar({ user }: { user: { email?: string; name?: string } }
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span>{theme === "dark" ? "Tema Claro" : "Tema Escuro"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
