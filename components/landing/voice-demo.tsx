@@ -307,7 +307,7 @@ function ChatBubble({
 }) {
   const isAssistant = msg.speaker === "assistant"
   const words = msg.text.split(/\s+/)
-  const visibleCount = Math.min(wordProgress, words.length)
+  const visibleCount = Math.min(wordProgress * 3, words.length)
   const isTyping = visibleCount > 0 && visibleCount < words.length
 
   if (visibleCount <= 0) return null
