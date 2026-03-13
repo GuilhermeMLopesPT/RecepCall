@@ -405,6 +405,7 @@ export function VoiceDemo() {
 
   useEffect(() => {
     if (!showChat) return
+    if (isPausedForAgenda) return
 
     if (confirmWords > 2) {
       setDashPhase("confirmed")
@@ -489,7 +490,7 @@ export function VoiceDemo() {
           pauseTimeoutRef.current = setTimeout(() => {
             pauseTimeoutRef.current = null
             setIsPausedForAgenda(false)
-            setDashPhase("found")
+            setDashPhase("scanning")
             audio.play()
           }, AGENDA_PAUSE_MS)
         }
