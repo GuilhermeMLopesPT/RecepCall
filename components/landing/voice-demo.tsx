@@ -476,7 +476,7 @@ export function VoiceDemo() {
     if (timerRef.current) clearInterval(timerRef.current)
     const threshold = (wordsBeforeAgendaMsg + agendaMsgWordCount) / totalWords
     timerRef.current = setInterval(() => {
-      if (hasPausedForAgendaRef.current) return
+      if (isPausedForAgenda) return
       if (audio.duration && audio.duration > 0) {
         const p = audio.currentTime / audio.duration
         setProgress(Math.min(p, 1))
@@ -490,7 +490,6 @@ export function VoiceDemo() {
             pauseTimeoutRef.current = null
             setIsPausedForAgenda(false)
             setDashPhase("found")
-            hasPausedForAgendaRef.current = false
             audio.play()
           }, AGENDA_PAUSE_MS)
         }
